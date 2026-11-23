@@ -1,0 +1,40 @@
+/* Earldeign Investments design tokens, Brand Manual v1.2 section 8. Components read tokens, never raw values. */
+:root {
+  /* Brand palette */
+  --ei-ink: #111827;
+  --ei-gold: #C49A1A;
+  --ei-paper: #FAF8F3;
+  --ei-slate: #6B7280;
+  --ei-border: #E5E7EB;
+  --ei-field: #878E99;
+  --ei-white: #FFFFFF;
+  /* Functional colours (pending approval, section 4) */
+  --ei-negative: #B91C1C;
+  --ei-positive: #166534;
+  --ei-warning: #92400E;
+  /* Semantic mapping */
+  --ei-text: var(--ei-ink);
+  --ei-text-muted: var(--ei-slate);
+  --ei-bg: var(--ei-paper);
+  --ei-surface: var(--ei-white);
+  --ei-accent: var(--ei-gold);
+  --ei-focus: var(--ei-ink);
+  /* Type */
+  --ei-font-brand: "Montserrat", Arial, sans-serif; /* logo artwork only */
+  --ei-font-ui: "Inter", Arial, sans-serif;
+  --ei-numeric: tabular-nums lining-nums;
+  /* Spacing (4 px scale) */
+  --ei-space-1: 4px;  --ei-space-2: 8px;   --ei-space-3: 12px; --ei-space-4: 16px;
+  --ei-space-6: 24px; --ei-space-8: 32px;  --ei-space-12: 48px; --ei-space-16: 64px;
+  /* Shape and layout */
+  --ei-radius-sm: 4px;
+  --ei-radius-md: 8px;
+  --ei-container: 1200px;
+  --ei-control-height: 44px;
+  --ei-row-height: 44px;
+  --ei-row-height-compact: 36px;
+  /* Logo sizing */
+  --ei-logo-full-min: 400px;
+  --ei-logo-compact-min: 260px;
+  --ei-monogram-min: 24px;
+}

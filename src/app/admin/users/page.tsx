@@ -1,0 +1,37 @@
+import Link from "next/link";
+import { db } from "@/db";
+import { ROLE_LABEL } from "@/lib/access";
+import { listUsers } from "@/services/admin";
+import { createUserAction } from "../actions";
+import { ActionForm, Submit } from "@/components/forms";
+import { PageHead, Panel, Status } from "@/components/ui";
+
+export const metadata = { title: "Users and roles" };
+
+export default async function Users() {
+  const rows = await listUsers(db);
+  return (
+    <>
+      <PageHead title="Users and roles" context="Roles are given per JV. A person can hold different roles in different JVs. Super Admin accounts manage the platform only and cannot hold JV roles." />
+      <Panel title="Add a user">
+        <ActionForm action={createUserAction}>
+          <div className="form-row">
+            <div className="field"><label htmlFor="name">Full name</label><input id="name" name="name" /></div>
+            <div className="field"><label htmlFor="email">Email</label><input id="email" type="email" name="email" /></div>
+            <div className="field"><label htmlFor="title">Title</label><input id="title" name="title" placeholder="e.g. Finance Officer, Earldeign Director" /></div>
+          </div>
+          <div className="checks"><label><input type="checkbox" name="superAdmin" value="1" />Super Admin (platform administration only)</label></div>
+          <div className="form-actions"><Submit>Create account</Submit><span className="small muted">A temporary password is shown once. Assign JV roles on the next screen.</span></div>
+        </ActionForm>
+      </Panel>
+      <Panel flush>
+        <table className="data"><thead><tr><th>Name</th><th>Email</th><th>Access</th><th>Two-factor</th><th>Status</th></tr></thead>
+          <tbody>{rows.map(({ user, roles }) => (
+            <tr key={user.id}><td><Link href={`/admin/users/${user.id}`}>{user.name}</Link></td><td>{user.email}</td>
+              <td className="wrap small">{user.isSuperAdmin ? "Super Admin" : roles.length ? roles.map((r) => `${ROLE_LABEL[r.m.role]} (${r.jv})`).join("; ") : <span className="muted">No roles yet</span>}</td>
+              <td>{user.totpEnabled ? "On" : "Off"}</td><td><Status status={user.active ? "approved" : "cancelled"} label={user.active ? "Active" : "Deactivated"} /></td></tr>
+          ))}</tbody></table>
+      </Panel>
+    </>
+  );
+}

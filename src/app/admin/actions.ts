@@ -1,0 +1,96 @@
+"use server";
+
+import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
+import { db } from "@/db";
+import type { Role } from "@/db/schema";
+import { clientIp, requireSuperAdmin } from "@/lib/session";
+import { all, fail, s } from "@/lib/actions";
+import type { FormState } from "@/components/forms";
+import * as A from "@/services/admin";
+
+async function actor(): Promise<A.AdminCtx> {
+  const u = await requireSuperAdmin();
+  return { userId: u.id, isSuperAdmin: u.isSuperAdmin, ip: await clientIp() };
+}
+
+function jvInput(fd: FormData): A.JvInput {
+  return {
+    code: s(fd, "code"), shortCode: s(fd, "shortCode"), name: s(fd, "name"), companyName: s(fd, "companyName"), companyAddress: s(fd, "companyAddress"),
+    companyPhone: s(fd, "companyPhone"), companyEmail: s(fd, "companyEmail"), vatNo: s(fd, "vatNo"), bpNo: s(fd, "bpNo"), tin: s(fd, "tin"),
+    taxClearanceNo: s(fd, "taxClearanceNo"), taxClearanceExpiry: s(fd, "taxClearanceExpiry") || null, vatRatePercent: s(fd, "vatRatePercent"),
+    fundingPartner: s(fd, "fundingPartner"), currencies: all(fd, "currencies"), acquittalDays: s(fd, "acquittalDays"), goLiveDate: s(fd, "goLiveDate") || null,
+  };
+}
+
+export async function createJvAction(_: FormState, fd: FormData): Promise<FormState> {
+  let id = "";
+  try {
+    const projects = s(fd, "projects").split(/\n|,/).map((x) => x.trim()).filter(Boolean);
+    id = (await A.createJv(db, await actor(), jvInput(fd), { projects: projects.length ? projects : ["General"], copyCategoriesFrom: s(fd, "copyFrom") || null })).id;
+  } catch (e) { return fail(e); }
+  redirect(`/admin/jvs/${id}`);
+}
+
+export async function updateJvAction(_: FormState, fd: FormData): Promise<FormState> {
+  try { await A.updateJv(db, await actor(), s(fd, "id"), jvInput(fd)); } catch (e) { return fail(e); }
+  revalidatePath(`/admin/jvs/${s(fd, "id")}`);
+  return { ok: "Settings saved." };
+}
+
+export async function listItemAction(_: FormState, fd: FormData): Promise<FormState> {
+  try {
+    const a = await actor();
+    const kind = s(fd, "kind") as "project" | "category";
+    if (s(fd, "toggle")) await A.toggleListItem(db, a, kind, s(fd, "toggle"));
+    else await A.addListItem(db, a, s(fd, "id"), kind, s(fd, "name"));
+  } catch (e) { return fail(e); }
+  revalidatePath(`/admin/jvs/${s(fd, "id")}`);
+  return { ok: "Saved." };
+}
+
+export async function bankAction(_: FormState, fd: FormData): Promise<FormState> {
+  try {
+    const a = await actor();
+    if (s(fd, "remove")) await A.removeBankAccount(db, a, s(fd, "remove"));
+    else await A.addBankAccount(db, a, s(fd, "id"), { accountName: s(fd, "accountName"), bank: s(fd, "bank"), details: s(fd, "details"), currency: s(fd, "currency") });
+  } catch (e) { return fail(e); }
+  revalidatePath(`/admin/jvs/${s(fd, "id")}`);
+  return { ok: "Saved." };
+}
+
+export async function budgetAction(_: FormState, fd: FormData): Promise<FormState> {
+  try {
+    const a = await actor();
+    for (const c of all(fd, "budget_ccy")) await A.setBudget(db, a, s(fd, "id"), c, s(fd, `budget_${c}`));
+  } catch (e) { return fail(e); }
+  revalidatePath(`/admin/jvs/${s(fd, "id")}`);
+  return { ok: "Budgets saved." };
+}
+
+export async function createUserAction(_: FormState, fd: FormData): Promise<FormState> {
+  try {
+    const r = await A.createUser(db, await actor(), { email: s(fd, "email"), name: s(fd, "name"), title: s(fd, "title"), superAdmin: s(fd, "superAdmin") === "1" });
+    return { ok: `Account created for ${r.user.email}. Temporary password: ${r.temporaryPassword}\nGive it to the person directly (not by email). They must change it, and set up two-factor if their role requires it, at first sign-in. It is not shown again.` };
+  } catch (e) { return fail(e); }
+}
+
+export async function userAdminAction(_: FormState, fd: FormData): Promise<FormState> {
+  const id = s(fd, "id");
+  try {
+    const a = await actor();
+    const op = s(fd, "op");
+    if (op === "grant") await A.grantRole(db, a, id, s(fd, "jvId"), s(fd, "role") as Role);
+    else if (op === "revoke") await A.revokeRole(db, a, s(fd, "membershipId"));
+    else if (op === "update") await A.updateUser(db, a, id, { name: s(fd, "name"), title: s(fd, "title") });
+    else if (op === "deactivate") await A.setUserActive(db, a, id, false);
+    else if (op === "activate") await A.setUserActive(db, a, id, true);
+    else if (op === "reset" || op === "reset2fa") {
+      const pw = await A.resetUserPassword(db, a, id, { resetTwoFactor: op === "reset2fa" });
+      revalidatePath(`/admin/users/${id}`);
+      return { ok: `New temporary password: ${pw}\nGive it to the person directly. They must change it at sign-in${op === "reset2fa" ? " and set up two-factor again" : ""}.` };
+    }
+  } catch (e) { return fail(e); }
+  revalidatePath(`/admin/users/${id}`);
+  return { ok: "Saved." };
+}
