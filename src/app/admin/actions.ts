@@ -85,6 +85,12 @@ export async function userAdminAction(_: FormState, fd: FormData): Promise<FormS
     if (op === "grant") await A.grantRole(db, a, id, s(fd, "jvId"), s(fd, "role") as Role);
     else if (op === "revoke") await A.revokeRole(db, a, s(fd, "membershipId"));
     else if (op === "update") await A.updateUser(db, a, id, { name: s(fd, "name"), title: s(fd, "title"), phone: s(fd, "phone"), smsEnabled: s(fd, "smsEnabled") === "1" });
+    else if (op === "testemail") {
+      const [u] = await db.select().from(users).where(eq(users.id, id));
+      const { testMail } = await import("@/lib/mailer");
+      const r = await testMail(u.email);
+      return r.ok ? { ok: `Test email sent to ${u.email}. ${r.detail}` } : { error: `The test email was not sent: ${r.detail}` };
+    }
     else if (op === "testsms") {
       const [u] = await db.select().from(users).where(eq(users.id, id));
       if (!u?.phone) return { error: "Add a mobile number first." };

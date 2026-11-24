@@ -33,6 +33,7 @@ export default async function UserAdmin({ params }: { params: Promise<{ id: stri
         <Panel title="Security">
           <ActionForm action={userAdminAction}>{h("reset")}<p className="small">Issue a new temporary password. Existing sessions are signed out.</p><div className="form-actions"><Submit variant="secondary" confirm="Reset this user's password?">Reset password</Submit></div></ActionForm>
           <ActionForm action={userAdminAction}>{h("reset2fa")}<p className="small">Lost phone: reset the password and two-factor together.</p><div className="form-actions"><Submit variant="secondary" confirm="Reset password and two-factor?">Reset password and two-factor</Submit></div></ActionForm>
+          <ActionForm action={userAdminAction}>{h("testemail")}<p className="small">Check that notification emails reach {u.email}.</p><div className="form-actions"><Submit variant="secondary">Send test email</Submit></div></ActionForm>
           <ActionForm action={userAdminAction}>{h("testsms")}<p className="small">Check the SMS gateway reaches this person.</p><div className="form-actions"><Submit variant="secondary">Send test SMS</Submit></div></ActionForm>
           <ActionForm action={userAdminAction}>{h(u.active ? "deactivate" : "activate")}<div className="form-actions"><Submit variant={u.active ? "destructive" : "secondary"} confirm={u.active ? "Deactivate this account? They are signed out immediately." : undefined}>{u.active ? "Deactivate account" : "Reactivate account"}</Submit></div></ActionForm>
         </Panel>

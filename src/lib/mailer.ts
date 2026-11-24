@@ -20,6 +20,26 @@ function getTransport() {
   return transporter;
 }
 
+/** Like sendMail, but reports the server's answer, for the Super Admin's test button. */
+export async function testMail(to: string): Promise<{ ok: boolean; detail: string }> {
+  const t = getTransport();
+  if (!t) return { ok: false, detail: "Email is not configured: SMTP_HOST is not set." };
+  try {
+    const info = await t.sendMail({
+      from: process.env.MAIL_FROM ?? "noreply@earldeign.co.zw", to,
+      subject: "Test email from the Earldeign portal",
+      text: "This is a test from the Earldeign portal. If you can read it, email notifications are working.\n\nEarldeign Investments (Pvt) Ltd",
+    });
+    return { ok: true, detail: `Accepted by the mail server (${info.response ?? "ok"}). Check the inbox and the spam folder.` };
+  } catch (e) {
+    const err = e as { code?: string; response?: string; message?: string };
+    const hint = err.code === "EAUTH" ? " The username or password was refused."
+      : err.code === "ESOCKET" || err.code === "ETIMEDOUT" || err.code === "ECONNECTION" ? " The server could not be reached on that host and port."
+      : /certificate|altnames/i.test(err.message ?? "") ? " The server's certificate does not match the host name: ask the host for the correct SMTP server name." : "";
+    return { ok: false, detail: `${err.response ?? err.message ?? "Unknown error"}.${hint}` };
+  }
+}
+
 export async function sendMail(to: string, subject: string, text: string): Promise<boolean> {
   const t = getTransport();
   if (!t) {
