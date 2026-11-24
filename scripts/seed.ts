@@ -12,9 +12,11 @@ import { hashPassword, temporaryPassword } from "../src/lib/passwords";
 async function ensureUser(email: string, name: string, title: string, superAdmin: boolean) {
   const [u] = await db.select().from(users).where(sql`lower(${users.email}) = ${email.toLowerCase()}`);
   if (u) { console.log(`exists  ${email}`); return u; }
+  const fromEnv = Boolean(process.env.SEED_INITIAL_PASSWORD);
   const pw = process.env.SEED_INITIAL_PASSWORD || temporaryPassword();
   const [n] = await db.insert(users).values({ email: email.toLowerCase(), name, title, passwordHash: await hashPassword(pw), isSuperAdmin: superAdmin, mustChangePassword: true }).returning();
-  console.log(`created ${email}  temporary password: ${pw}  (must be changed at first sign-in)`);
+  // Never echo a password that came from the environment: build logs are visible to anyone with project access.
+  console.log(fromEnv ? `created ${email}  (temporary password from SEED_INITIAL_PASSWORD; must be changed at first sign-in)` : `created ${email}  temporary password: ${pw}  (must be changed at first sign-in)`);
   return n;
 }
 
