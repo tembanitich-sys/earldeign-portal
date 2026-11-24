@@ -305,3 +305,14 @@ export async function markNotificationsReadAction(fd: FormData) {
   await db.update(notifications).set({ readAt: new Date() }).where(and(eq(notifications.userId, ctx.userId), eq(notifications.jvId, ctx.jv.id)));
   revalidatePath(`${base(fd)}/notifications`);
 }
+
+export async function projectAction(_: FormState, fd: FormData): Promise<FormState> {
+  try {
+    const ctx = await ctxOf(fd);
+    const { addProject, setProjectActive } = await import("@/services/projects");
+    if (s(fd, "toggle")) await setProjectActive(db, ctx, s(fd, "toggle"), s(fd, "active") === "1");
+    else await addProject(db, ctx, s(fd, "name"));
+  } catch (e) { return fail(e); }
+  revalidatePath(`${base(fd)}/projects`);
+  return { ok: "Saved." };
+}

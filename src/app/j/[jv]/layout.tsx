@@ -33,7 +33,7 @@ export default async function JvLayout({ children, params }: { children: ReactNo
         <div className="nav-section">Spend</div>
         <NavLink href={`${base}/requisitions`}>Requisitions</NavLink>
         {fin ? <NavLink href={`${base}/supplier-invoices`}>Supplier invoices</NavLink> : null}
-        {fin ? <NavLink href={`${base}/projects`}>Project costs</NavLink> : null}
+        {fin ? <NavLink href={`${base}/projects`}>Projects and costs</NavLink> : null}
         <div className="nav-section">Income</div>
         <NavLink href={`${base}/invoice-requests`}>Invoice requests</NavLink>
         {fin ? <NavLink href={`${base}/invoices`}>Invoices</NavLink> : null}

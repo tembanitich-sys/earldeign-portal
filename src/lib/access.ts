@@ -29,14 +29,15 @@ export type Perm =
   | "propose_change"
   | "authorise_change"
   | "import_history"
-  | "close_period";
+  | "close_period"
+  | "manage_projects";
 
 const MATRIX: Record<Role, Perm[]> = {
   cto: ["view_finance", "create_requisition", "cto_review", "create_invoice_request", "manage_clients",
-    "record_supplier_invoice", "propose_change", "authorise_change", "import_history", "submit_acquittal"],
+    "record_supplier_invoice", "propose_change", "authorise_change", "import_history", "submit_acquittal", "manage_projects"],
   project_coordinator: ["create_requisition", "create_invoice_request", "submit_acquittal"],
   finance_officer: ["view_finance", "finance_review", "approve_acquittal", "issue_invoice", "manage_clients",
-    "record_supplier_invoice", "record_conversion", "propose_change", "authorise_change", "import_history", "close_period"],
+    "record_supplier_invoice", "record_conversion", "propose_change", "authorise_change", "import_history", "close_period", "manage_projects"],
   finance_clerk: ["view_finance", "disburse", "record_receipt", "submit_acquittal", "manage_clients"],
   partner_viewer: ["view_finance"],
   director: ["view_finance"],

@@ -21,7 +21,7 @@ export function RequisitionForm({ ctx, projects, categories, supplierInvoices, r
         <div className="form">
           <div className="form-row">
             <div className="field"><label htmlFor="projectId">Project</label>
-              <select id="projectId" name="projectId" defaultValue={r?.projectId ?? ""}><option value="">General / not project-specific</option>{projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
+              <select id="projectId" name="projectId" defaultValue={r?.projectId ?? ""}><option value="">General / not project-specific</option>{projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select>{ctx.roles.includes("cto") || ctx.roles.includes("finance_officer") ? <span className="hint">Missing a project? Add it under <a href={`/j/${ctx.jv.code}/projects`} target="_blank" rel="noopener">Projects and costs</a>, then reload this page.</span> : null}</div>
             <div className="field"><label htmlFor="categoryId">Expense category</label>
               <select id="categoryId" name="categoryId" defaultValue={r?.categoryId ?? ""}><option value="">Choose a category</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
           </div>

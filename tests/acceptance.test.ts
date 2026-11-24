@@ -277,3 +277,18 @@ describe("Further rules", () => {
     expect(d.lines.length).toBe(2);
   });
 });
+
+describe("Projects", () => {
+  it("CTO and Finance Officer add projects in their own JV only; others cannot; no duplicates", async () => {
+    const { addProject, setProjectActive } = await import("@/services/projects");
+    const w = await world();
+    const p = await addProject(db, w.cto, "ZimBNB");
+    await expect(addProject(db, w.fo, "zimbnb")).rejects.toThrow(/already exists/);
+    await expect(addProject(db, w.pc, "Other")).rejects.toThrow(/permission/);
+    await expect(addProject(db, w.viewer, "Other")).rejects.toThrow(/permission/);
+    const other = await world();
+    await expect(setProjectActive(db, other.cto, p.id, false)).rejects.toThrow(/not found/);
+    await setProjectActive(db, w.fo, p.id, false);
+    await expect(addProject(db, w.cto, "ZimBNB")).rejects.toThrow(/inactive/);
+  });
+});
