@@ -119,7 +119,7 @@ export const memberships = pgTable("memberships", {
   jvId: uuid("jv_id").notNull().references(() => jvs.id),
   role: roleEnum("role").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [uniqueIndex("memberships_uq").on(t.userId, t.jvId, t.role)]);
+}, (t) => [uniqueIndex("memberships_one_role_uq").on(t.userId, t.jvId)]); // hard rule: one role per person per JV
 
 export const sequences = pgTable("sequences", {
   jvId: uuid("jv_id").notNull().references(() => jvs.id),

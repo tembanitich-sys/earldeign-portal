@@ -7,7 +7,7 @@ import { ROLE_LABEL } from "@/lib/access";
 import { fmtDateTime } from "@/lib/dates";
 import { userAdminAction } from "../../actions";
 import { ActionForm, Submit } from "@/components/forms";
-import { Empty, Facts, PageHead, Panel } from "@/components/ui";
+import { Facts, PageHead, Panel } from "@/components/ui";
 
 export default async function UserAdmin({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -22,7 +22,7 @@ export default async function UserAdmin({ params }: { params: Promise<{ id: stri
       <PageHead title={u.name} crumbs={<Link href="/admin/users">Users and roles</Link>} context={`${u.email}${u.isSuperAdmin ? " · Super Admin" : ""}${u.active ? "" : " · Deactivated"}`} />
       <div className="grid-2">
         <Panel title="Account">
-          <Facts items={[["Email", u.email], ["Title", u.title], ["Mobile", u.phone], ...((process.env.SMS_DRIVER ?? "off") !== "off" ? [["SMS alerts", u.phone ? (u.smsEnabled ? "On" : "Off") : "No number"] as [string, string]] : []), ["Two-factor", u.totpEnabled ? "On" : "Off"], ["Must change password", u.mustChangePassword ? "Yes" : "No"], ["Locked until", u.lockedUntil ? fmtDateTime(u.lockedUntil) : null], ["Created", fmtDateTime(u.createdAt)]]} />
+          <Facts items={[["Two-factor", u.totpEnabled ? "On" : "Off"], ["Must change password", u.mustChangePassword ? "Yes" : "No"], ...(u.lockedUntil && u.lockedUntil > new Date() ? [["Locked until", fmtDateTime(u.lockedUntil)] as [string, string]] : []), ["Created", fmtDateTime(u.createdAt)]]} />
           <ActionForm action={userAdminAction}>{h("update")}
             <div className="field" style={{ marginTop: 16 }}><label htmlFor="email">Email (also the sign-in)</label><input id="email" type="email" name="email" defaultValue={u.email} /><span className="hint">Changing it sends a notice to the old address and is recorded in the audit log.</span></div>
             <div className="form-row"><div className="field"><label htmlFor="name">Name</label><input id="name" name="name" defaultValue={u.name} /></div><div className="field"><label htmlFor="title">Title</label><input id="title" name="title" defaultValue={u.title ?? ""} /></div></div>
@@ -30,7 +30,23 @@ export default async function UserAdmin({ params }: { params: Promise<{ id: stri
               {(process.env.SMS_DRIVER ?? "off") !== "off"
                 ? <div className="field"><span className="label">SMS alerts</span><div className="checks"><label><input type="checkbox" name="smsEnabled" value="1" defaultChecked={u.smsEnabled} />Send SMS for items needing action and decisions</label></div></div>
                 : <input type="hidden" name="smsEnabled" value={u.smsEnabled ? "1" : "0"} />}</div>
-            <div className="form-actions"><Submit variant="secondary">Save</Submit></div>
+            <h3 style={{ marginTop: 8 }}>Access</h3>
+            {u.isSuperAdmin ? (
+              <p className="small muted">Super Admin accounts manage the platform and cannot hold JV roles. Create a separate account for this person&apos;s JV work.</p>
+            ) : allJvs.length === 0 ? <p className="small muted">No joint ventures yet.</p> : (
+              <div className="form-row">{allJvs.map((j) => (
+                <div className="field" key={j.id}>
+                  <input type="hidden" name="jvIds" value={j.id} />
+                  <label htmlFor={`role_${j.id}`}>Role in {j.name}</label>
+                  <select id={`role_${j.id}`} name={`role_${j.id}`} defaultValue={ms.find((x) => x.jv.id === j.id)?.m.role ?? ""}>
+                    <option value="">No access</option>
+                    {roleEnum.enumValues.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
+                  </select>
+                </div>
+              ))}</div>
+            )}
+            {!u.isSuperAdmin ? <p className="small muted">One person, one role per JV. Directors and Partner Viewers are read-only; finance roles set up two-factor at their next sign-in.</p> : null}
+            <div className="form-actions"><Submit>Save</Submit></div>
           </ActionForm>
         </Panel>
         <Panel title="Security and checks">
@@ -45,19 +61,7 @@ export default async function UserAdmin({ params }: { params: Promise<{ id: stri
           </div>
         </Panel>
       </div>
-      {u.isSuperAdmin ? <Panel title="JV roles"><p>Super Admin accounts cannot hold JV roles. Create a separate account for this person&apos;s JV work.</p></Panel> : (
-        <Panel title="JV roles">
-          {ms.length ? <table className="data"><tbody>{ms.map(({ m, jv }) => <tr key={m.id}><td>{jv.name}</td><td>{ROLE_LABEL[m.role]}</td><td className="num"><ActionForm action={userAdminAction} className="inline-form">{h("revoke")}<input type="hidden" name="membershipId" value={m.id} /><Submit variant="tertiary" small confirm="Remove this role?">Remove</Submit></ActionForm></td></tr>)}</tbody></table> : <Empty title="No roles yet" />}
-          <ActionForm action={userAdminAction}>{h("grant")}
-            <div className="form-row" style={{ alignItems: "end", marginTop: 16 }}>
-              <div className="field"><label htmlFor="jvId">Joint venture</label><select id="jvId" name="jvId">{allJvs.map((j) => <option key={j.id} value={j.id}>{j.name}</option>)}</select></div>
-              <div className="field"><label htmlFor="role">Role</label><select id="role" name="role">{roleEnum.enumValues.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}</select></div>
-              <div className="field"><Submit>Give role</Submit></div>
-            </div>
-            <p className="small muted">Directors and Partner Viewers are read-only. Finance roles must set up two-factor at their next sign-in.</p>
-          </ActionForm>
-        </Panel>
-      )}
+
     </>
   );
 }

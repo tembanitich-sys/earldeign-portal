@@ -81,26 +81,21 @@ describe("SPEC section 14 acceptance tests", () => {
     expect((await R.getRequisition(db, w.cto, r.id)).status).toBe("finance_review");
   });
 
-  it("4. nobody approves their own requisition; approver and disburser must differ", async () => {
-    const both = await makeUser("FO and FC");
-    await A.grantRole(db, w.admin, both.id, w.jv.id, "finance_officer");
-    await A.grantRole(db, w.admin, both.id, w.jv.id, "finance_clerk");
-    const ctx = (await loadCtx(db, both.id, w.jv.code))!;
+  it("4. nobody approves their own requisition; approver and disburser must differ; one role per person per JV", async () => {
     const r = await R.createRequisition(db, w.cto, { currency: "USD", payee: "X", paymentMethod: "cash", lines: [line("Item", "10")] });
     await R.submitRequisition(db, w.cto, r.id);
     await expect(R.ctoReview(db, w.cto, r.id, "approve")).rejects.toThrow();
-    await R.financeReview(db, ctx, r.id, "approve");
-    await expect(R.disburse(db, ctx, r.id, { method: "cash", date: todayIso() })).rejects.toThrow(/approved this requisition cannot also disburse/);
-
-    const own = await R.createRequisition(db, w.cto, { currency: "USD", payee: "Y", paymentMethod: "cash", lines: [line("Item", "10")] });
-    const cfo = await makeUser("CTO and FO");
-    await A.grantRole(db, w.admin, cfo.id, w.jv.id, "cto");
-    await A.grantRole(db, w.admin, cfo.id, w.jv.id, "finance_officer");
-    const cfoCtx = (await loadCtx(db, cfo.id, w.jv.code))!;
-    const own2 = await R.createRequisition(db, cfoCtx, { currency: "USD", payee: "Z", paymentMethod: "cash", lines: [line("Item", "10")] });
-    await R.submitRequisition(db, cfoCtx, own2.id);
-    await expect(R.financeReview(db, cfoCtx, own2.id, "approve")).rejects.toThrow(/you raised/);
-    expect(own.status).toBe("draft");
+    const pcReq = await R.createRequisition(db, w.pc, { currency: "USD", payee: "Y", paymentMethod: "cash", lines: [line("Item", "10")] });
+    await R.submitRequisition(db, w.pc, pcReq.id);
+    await expect(R.ctoReview(db, w.pc, pcReq.id, "approve")).rejects.toThrow(/permission/);
+    await expect(R.disburse(db, w.fo, r.id, { method: "cash", date: todayIso() })).rejects.toThrow(/permission/);
+    // Hard rule: a second role in the same JV is refused, by the service and by the database.
+    const two = await makeUser("Two Roles");
+    await A.grantRole(db, w.admin, two.id, w.jv.id, "finance_officer");
+    await expect(A.grantRole(db, w.admin, two.id, w.jv.id, "finance_clerk")).rejects.toThrow(/One person, one role/);
+    const { memberships } = await import("@/db/schema");
+    const dbErr = await db.insert(memberships).values({ userId: two.id, jvId: w.jv.id, role: "cto" }).then(() => "inserted", (e) => String((e as { cause?: Error }).cause?.message ?? e));
+    expect(dbErr).toMatch(/memberships_one_role_uq/);
   });
 
   it("5. the Super Admin cannot hold JV roles or post entries", async () => {
@@ -379,5 +374,22 @@ describe("User profiles", () => {
     expect(u2.name).toBe("Renamed Person");
     expect(u2.phone).toBe("+263771234567");
     expect(u2.email).toBe(newEmail);
+  });
+});
+
+describe("Role assignment", () => {
+  it("setRole gives exactly one role per JV, changes it, or removes access", async () => {
+    const { memberships } = await import("@/db/schema");
+    const { eq, and } = await import("drizzle-orm");
+    const w = await world();
+    const u = await makeUser("Role Person");
+    const held = async () => (await db.select().from(memberships).where(and(eq(memberships.userId, u.id), eq(memberships.jvId, w.jv.id)))).map((m) => m.role);
+    await A.setRole(db, w.admin, u.id, w.jv.id, "project_coordinator");
+    expect(await held()).toEqual(["project_coordinator"]);
+    await A.setRole(db, w.admin, u.id, w.jv.id, "finance_clerk");
+    expect(await held()).toEqual(["finance_clerk"]);
+    await A.setRole(db, w.admin, u.id, w.jv.id, null);
+    expect(await held()).toEqual([]);
+    await expect(A.setRole(db, w.admin, w.admin.userId, w.jv.id, "cto")).rejects.toThrow(/Super Admin/);
   });
 });

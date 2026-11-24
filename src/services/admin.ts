@@ -237,6 +237,32 @@ export async function updateOwnProfile(db: DB, userId: string, input: { name: st
   });
 }
 
+/**
+ * Hard rule: one person holds at most one role in a JV. Sets that role (or removes access when role is null).
+ * Changes are audited; the database also enforces the rule with a unique index.
+ */
+export async function setRole(db: DB, a: AdminCtx, userId: string, jvId: string, role: Role | null) {
+  requireSuper(a);
+  assert(role === null || (roleEnum.enumValues as readonly string[]).includes(role), "Choose a role.");
+  await db.transaction(async (tx) => {
+    const [u] = await tx.select().from(users).where(eq(users.id, userId));
+    assert(u, "User not found.");
+    assert(!u.isSuperAdmin || role === null, "Super Admin accounts cannot hold JV roles. Create a separate account for this person's JV role.");
+    const [jv] = await tx.select().from(jvs).where(eq(jvs.id, jvId));
+    assert(jv, "JV not found.");
+    const [current] = await tx.select().from(memberships).where(and(eq(memberships.userId, userId), eq(memberships.jvId, jvId)));
+    if ((current?.role ?? null) === role) return;
+    if (current) {
+      await tx.delete(memberships).where(eq(memberships.id, current.id));
+      await audit(tx, { actorId: a.userId, jvId, action: "role.revoke", entityType: "user", entityId: userId, before: { role: current.role, jv: jv.code }, ip: a.ip });
+    }
+    if (role) {
+      await tx.insert(memberships).values({ userId, jvId, role });
+      await audit(tx, { actorId: a.userId, jvId, action: "role.grant", entityType: "user", entityId: userId, after: { role, jv: jv.code }, ip: a.ip });
+    }
+  });
+}
+
 export async function grantRole(db: DB, a: AdminCtx, userId: string, jvId: string, role: Role) {
   requireSuper(a);
   assert((roleEnum.enumValues as readonly string[]).includes(role), "Choose a role.");
@@ -247,7 +273,10 @@ export async function grantRole(db: DB, a: AdminCtx, userId: string, jvId: strin
     assert(!u.isSuperAdmin, "Super Admin accounts cannot hold JV roles. Create a separate account for this person's JV role.");
     const [jv] = await tx.select().from(jvs).where(eq(jvs.id, jvId));
     assert(jv, "JV not found.");
-    await tx.insert(memberships).values({ userId, jvId, role }).onConflictDoNothing();
+    const [held] = await tx.select({ role: memberships.role }).from(memberships).where(and(eq(memberships.userId, userId), eq(memberships.jvId, jvId)));
+    assert(!held || held.role === role, `This person already holds a role in ${jv.name}. One person, one role per JV: change the role instead.`);
+    if (held) return;
+    await tx.insert(memberships).values({ userId, jvId, role });
     await audit(tx, { actorId: a.userId, jvId, action: "role.grant", entityType: "user", entityId: userId, after: { role, jv: jv.code }, ip: a.ip });
   });
 }

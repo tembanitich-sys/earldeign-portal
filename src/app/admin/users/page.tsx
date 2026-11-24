@@ -2,6 +2,8 @@ import Link from "next/link";
 import { db } from "@/db";
 import { ROLE_LABEL } from "@/lib/access";
 import { listUsers } from "@/services/admin";
+import { asc } from "drizzle-orm";
+import { jvs, roleEnum } from "@/db/schema";
 import { createUserAction } from "../actions";
 import { ActionForm, Submit } from "@/components/forms";
 import { PageHead, Panel, Status } from "@/components/ui";
@@ -10,6 +12,7 @@ export const metadata = { title: "Users and roles" };
 
 export default async function Users() {
   const rows = await listUsers(db);
+  const allJvs = await db.select().from(jvs).orderBy(asc(jvs.name));
   return (
     <>
       <PageHead title="Users and roles" context="Roles are given per JV. A person can hold different roles in different JVs. Super Admin accounts manage the platform only and cannot hold JV roles." />
@@ -21,8 +24,14 @@ export default async function Users() {
             <div className="field"><label htmlFor="title">Title</label><input id="title" name="title" placeholder="e.g. Finance Officer, Earldeign Director" /></div>
             <div className="field"><label htmlFor="phone">Mobile number (for SMS alerts)</label><input id="phone" name="phone" inputMode="tel" placeholder="0771 234 567" /></div>
           </div>
-          <div className="checks"><label><input type="checkbox" name="superAdmin" value="1" />Super Admin (platform administration only)</label></div>
-          <div className="form-actions"><Submit>Create account</Submit><span className="small muted">A temporary password is shown once. Assign JV roles on the next screen.</span></div>
+          {allJvs.length ? <div className="form-row">{allJvs.map((j) => (
+            <div className="field" key={j.id}><input type="hidden" name="jvIds" value={j.id} />
+              <label htmlFor={`role_${j.id}`}>Role in {j.name}</label>
+              <select id={`role_${j.id}`} name={`role_${j.id}`} defaultValue=""><option value="">No access</option>{roleEnum.enumValues.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}</select>
+            </div>
+          ))}</div> : null}
+          <div className="checks"><label><input type="checkbox" name="superAdmin" value="1" />Super Admin (platform administration only; cannot hold a JV role)</label></div>
+          <div className="form-actions"><Submit>Create account</Submit><span className="small muted">A temporary password is shown once. One person, one role per JV.</span></div>
         </ActionForm>
       </Panel>
       <Panel flush>

@@ -29,6 +29,13 @@
       "when": 1795507538390,
       "tag": "0003_user_phone_sms",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1795526161519,
+      "tag": "0004_one_role_per_jv",
+      "breakpoints": true
     }
   ]
 }

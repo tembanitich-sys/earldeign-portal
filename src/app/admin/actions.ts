@@ -72,7 +72,10 @@ export async function budgetAction(_: FormState, fd: FormData): Promise<FormStat
 
 export async function createUserAction(_: FormState, fd: FormData): Promise<FormState> {
   try {
-    const r = await A.createUser(db, await actor(), { email: s(fd, "email"), name: s(fd, "name"), title: s(fd, "title"), phone: s(fd, "phone"), superAdmin: s(fd, "superAdmin") === "1" });
+    const a = await actor();
+    const superAdmin = s(fd, "superAdmin") === "1";
+    const r = await A.createUser(db, a, { email: s(fd, "email"), name: s(fd, "name"), title: s(fd, "title"), phone: s(fd, "phone"), superAdmin });
+    if (!superAdmin) for (const jvId of all(fd, "jvIds")) if (s(fd, `role_${jvId}`)) await A.setRole(db, a, r.user.id, jvId, s(fd, `role_${jvId}`) as Role);
     return { ok: `Account created for ${r.user.email}. Temporary password: ${r.temporaryPassword}\nGive it to the person directly (not by email). They must change it, and set up two-factor if their role requires it, at first sign-in. It is not shown again.` };
   } catch (e) { return fail(e); }
 }
@@ -85,6 +88,7 @@ export async function userAdminAction(_: FormState, fd: FormData): Promise<FormS
     if (op === "grant") await A.grantRole(db, a, id, s(fd, "jvId"), s(fd, "role") as Role);
     else if (op === "revoke") await A.revokeRole(db, a, s(fd, "membershipId"));
     else if (op === "update") {
+      for (const jvId of all(fd, "jvIds")) await A.setRole(db, a, id, jvId, (s(fd, `role_${jvId}`) || null) as Role | null);
       const r = await A.updateUser(db, a, id, { email: s(fd, "email"), name: s(fd, "name"), title: s(fd, "title"), phone: s(fd, "phone"), smsEnabled: s(fd, "smsEnabled") === "1" });
       revalidatePath(`/admin/users/${id}`);
       return { ok: r.oldEmail !== r.newEmail ? `Saved. Sign-in email changed to ${r.newEmail}; a notice was sent to ${r.oldEmail}.` : "Saved." };
