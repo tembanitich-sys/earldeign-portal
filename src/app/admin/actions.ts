@@ -3,7 +3,9 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
-import type { Role } from "@/db/schema";
+import { users, type Role } from "@/db/schema";
+import { eq } from "drizzle-orm";
+import { sendSms } from "@/lib/sms";
 import { clientIp, requireSuperAdmin } from "@/lib/session";
 import { all, fail, s } from "@/lib/actions";
 import type { FormState } from "@/components/forms";
@@ -70,7 +72,7 @@ export async function budgetAction(_: FormState, fd: FormData): Promise<FormStat
 
 export async function createUserAction(_: FormState, fd: FormData): Promise<FormState> {
   try {
-    const r = await A.createUser(db, await actor(), { email: s(fd, "email"), name: s(fd, "name"), title: s(fd, "title"), superAdmin: s(fd, "superAdmin") === "1" });
+    const r = await A.createUser(db, await actor(), { email: s(fd, "email"), name: s(fd, "name"), title: s(fd, "title"), phone: s(fd, "phone"), superAdmin: s(fd, "superAdmin") === "1" });
     return { ok: `Account created for ${r.user.email}. Temporary password: ${r.temporaryPassword}\nGive it to the person directly (not by email). They must change it, and set up two-factor if their role requires it, at first sign-in. It is not shown again.` };
   } catch (e) { return fail(e); }
 }
@@ -82,7 +84,14 @@ export async function userAdminAction(_: FormState, fd: FormData): Promise<FormS
     const op = s(fd, "op");
     if (op === "grant") await A.grantRole(db, a, id, s(fd, "jvId"), s(fd, "role") as Role);
     else if (op === "revoke") await A.revokeRole(db, a, s(fd, "membershipId"));
-    else if (op === "update") await A.updateUser(db, a, id, { name: s(fd, "name"), title: s(fd, "title") });
+    else if (op === "update") await A.updateUser(db, a, id, { name: s(fd, "name"), title: s(fd, "title"), phone: s(fd, "phone"), smsEnabled: s(fd, "smsEnabled") === "1" });
+    else if (op === "testsms") {
+      const [u] = await db.select().from(users).where(eq(users.id, id));
+      if (!u?.phone) return { error: "Add a mobile number first." };
+      if ((process.env.SMS_DRIVER ?? "off") === "off") return { error: "SMS is switched off (SMS_DRIVER is not set). Configure the gateway first." };
+      const r = await sendSms(u.phone, "Test message from the Earldeign portal. No action needed.");
+      return r.ok ? { ok: `Test SMS sent to ${u.phone}. Gateway reply: ${r.detail}` } : { error: `The gateway did not accept the SMS: ${r.detail}` };
+    }
     else if (op === "deactivate") await A.setUserActive(db, a, id, false);
     else if (op === "activate") await A.setUserActive(db, a, id, true);
     else if (op === "reset" || op === "reset2fa") {

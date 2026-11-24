@@ -5,6 +5,7 @@ import { audit } from "@/lib/audit";
 import { assert, DomainError } from "@/lib/errors";
 import { CURRENCIES, parseAmount } from "@/lib/money";
 import { hashPassword, temporaryPassword } from "@/lib/passwords";
+import { normalisePhone } from "@/lib/sms";
 import { roleEnum } from "@/db/schema";
 
 export type AdminCtx = { userId: string; isSuperAdmin: boolean; ip?: string | null };
@@ -143,8 +144,16 @@ export async function setBudget(db: DB, a: AdminCtx, jvId: string, currency: str
 
 // ---------------------------------------------------------------- users
 
-export async function createUser(db: DB, a: AdminCtx, input: { email: string; name: string; title?: string; superAdmin?: boolean }) {
+function phoneOf(input?: string | null): string | null {
+  if (!input?.trim()) return null;
+  const p = normalisePhone(input);
+  assert(p, "Enter the mobile number as 0771 234 567 or +263 771 234 567.");
+  return p;
+}
+
+export async function createUser(db: DB, a: AdminCtx, input: { email: string; name: string; title?: string; phone?: string; superAdmin?: boolean }) {
   requireSuper(a);
+  const phone = phoneOf(input.phone);
   const email = input.email.trim().toLowerCase();
   assert(/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email), "Enter a valid email address.");
   assert(input.name?.trim(), "Enter the person's name.");
@@ -153,8 +162,8 @@ export async function createUser(db: DB, a: AdminCtx, input: { email: string; na
   return db.transaction(async (tx) => {
     const [dupe] = await tx.select().from(users).where(sql`lower(${users.email}) = ${email}`);
     assert(!dupe, "A user with that email already exists.");
-    const [u] = await tx.insert(users).values({ email, name: input.name.trim(), title: input.title?.trim() || null, passwordHash, isSuperAdmin: Boolean(input.superAdmin), mustChangePassword: true }).returning();
-    await audit(tx, { actorId: a.userId, action: "user.create", entityType: "user", entityId: u.id, after: { email, name: u.name, superAdmin: u.isSuperAdmin }, ip: a.ip });
+    const [u] = await tx.insert(users).values({ email, name: input.name.trim(), title: input.title?.trim() || null, phone, passwordHash, isSuperAdmin: Boolean(input.superAdmin), mustChangePassword: true }).returning();
+    await audit(tx, { actorId: a.userId, action: "user.create", entityType: "user", entityId: u.id, after: { email, name: u.name, phone, superAdmin: u.isSuperAdmin }, ip: a.ip });
     return { user: u, temporaryPassword: password };
   });
 }
@@ -183,11 +192,12 @@ export async function setUserActive(db: DB, a: AdminCtx, userId: string, active:
   });
 }
 
-export async function updateUser(db: DB, a: AdminCtx, userId: string, input: { name: string; title?: string }) {
+export async function updateUser(db: DB, a: AdminCtx, userId: string, input: { name: string; title?: string; phone?: string; smsEnabled?: boolean }) {
   requireSuper(a);
   assert(input.name?.trim(), "Enter the person's name.");
+  const phone = phoneOf(input.phone);
   await db.transaction(async (tx) => {
-    await tx.update(users).set({ name: input.name.trim(), title: input.title?.trim() || null }).where(eq(users.id, userId));
+    await tx.update(users).set({ name: input.name.trim(), title: input.title?.trim() || null, phone, smsEnabled: input.smsEnabled ?? true }).where(eq(users.id, userId));
     await audit(tx, { actorId: a.userId, action: "user.update", entityType: "user", entityId: userId, after: input, ip: a.ip });
   });
 }

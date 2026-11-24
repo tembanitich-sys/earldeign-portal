@@ -34,6 +34,8 @@ export const users = pgTable("users", {
   email: text("email").notNull(),
   name: text("name").notNull(),
   title: text("title"),
+  phone: text("phone"), // E.164, e.g. +263771234567; used for SMS notifications
+  smsEnabled: boolean("sms_enabled").notNull().default(true),
   passwordHash: text("password_hash").notNull(),
   totpSecret: text("totp_secret"),
   totpEnabled: boolean("totp_enabled").notNull().default(false),
@@ -448,6 +450,8 @@ export const notifications = pgTable("notifications", {
   body: text("body"),
   link: text("link"),
   emailed: boolean("emailed").notNull().default(false),
+  smsWanted: boolean("sms_wanted").notNull().default(false),
+  smsSent: boolean("sms_sent").notNull().default(false),
   readAt: timestamp("read_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [index("notifications_user").on(t.userId, t.readAt)]);

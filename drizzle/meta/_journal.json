@@ -22,6 +22,13 @@
       "when": 1795492438691,
       "tag": "0002_jv_logo",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1795507538390,
+      "tag": "0003_user_phone_sms",
+      "breakpoints": true
     }
   ]
 }

@@ -211,7 +211,7 @@ export async function issueInvoice(db: DB, ctx: Ctx, id: string, fiscalInvoiceNo
     assert(fiscalInvoiceNo?.trim(), "Enter the fiscal invoice number from the fiscal device before issuing.");
     await tx.update(invoices).set({ status: "issued", fiscalInvoiceNo: fiscalInvoiceNo.trim(), issuedById: ctx.userId, issuedAt: new Date() }).where(eq(invoices.id, id));
     await recordEvent(tx, ctx, "invoice", id, `Issued (fiscal no. ${fiscalInvoiceNo.trim()})`, "finance_officer");
-    await notify(tx, ctx, { roles: ["cto", "finance_clerk"], title: `Invoice ${inv.number} issued`, body: `${inv.currency} ${formatMinor(inv.total)}`, link: `/j/${ctx.jv.code}/invoices/${id}` });
+    await notify(tx, ctx, { roles: ["cto", "finance_clerk"], sms: false, title: `Invoice ${inv.number} issued`, body: `${inv.currency} ${formatMinor(inv.total)}`, link: `/j/${ctx.jv.code}/invoices/${id}` });
     await audit(tx, { actorId: ctx.userId, jvId: ctx.jv.id, action: "invoice.issue", entityType: "invoice", entityId: id, after: { fiscalInvoiceNo } });
   });
 }
@@ -364,7 +364,7 @@ export async function recordReceipt(db: DB, ctx: Ctx, input: ReceiptInput) {
     });
     await allocate(tx, ctx, rc, input.allocations);
     await recordEvent(tx, ctx, "receipt", rc.id, "Recorded", "finance_clerk");
-    await notify(tx, ctx, { roles: ["cto", "finance_officer"], title: `Receipt ${number}: ${input.currency} ${formatMinor(amount)} from ${client.name}`, link: `/j/${ctx.jv.code}/receipts/${rc.id}` });
+    await notify(tx, ctx, { roles: ["cto", "finance_officer"], sms: false, title: `Receipt ${number}: ${input.currency} ${formatMinor(amount)} from ${client.name}`, link: `/j/${ctx.jv.code}/receipts/${rc.id}` });
     await audit(tx, { actorId: ctx.userId, jvId: ctx.jv.id, action: "receipt.create", entityType: "receipt", entityId: rc.id, after: rc });
     return rc;
   });

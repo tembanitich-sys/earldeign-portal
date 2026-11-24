@@ -22,15 +22,18 @@ export default async function UserAdmin({ params }: { params: Promise<{ id: stri
       <PageHead title={u.name} crumbs={<Link href="/admin/users">Users and roles</Link>} context={`${u.email}${u.isSuperAdmin ? " · Super Admin" : ""}${u.active ? "" : " · Deactivated"}`} />
       <div className="grid-2">
         <Panel title="Account">
-          <Facts items={[["Email", u.email], ["Title", u.title], ["Two-factor", u.totpEnabled ? "On" : "Off"], ["Must change password", u.mustChangePassword ? "Yes" : "No"], ["Locked until", u.lockedUntil ? fmtDateTime(u.lockedUntil) : null], ["Created", fmtDateTime(u.createdAt)]]} />
+          <Facts items={[["Email", u.email], ["Title", u.title], ["Mobile", u.phone], ["SMS alerts", u.phone ? (u.smsEnabled ? "On" : "Off") : "No number"], ["Two-factor", u.totpEnabled ? "On" : "Off"], ["Must change password", u.mustChangePassword ? "Yes" : "No"], ["Locked until", u.lockedUntil ? fmtDateTime(u.lockedUntil) : null], ["Created", fmtDateTime(u.createdAt)]]} />
           <ActionForm action={userAdminAction}>{h("update")}
             <div className="form-row" style={{ marginTop: 16 }}><div className="field"><label htmlFor="name">Name</label><input id="name" name="name" defaultValue={u.name} /></div><div className="field"><label htmlFor="title">Title</label><input id="title" name="title" defaultValue={u.title ?? ""} /></div></div>
+            <div className="form-row"><div className="field"><label htmlFor="phone">Mobile number</label><input id="phone" name="phone" inputMode="tel" defaultValue={u.phone ?? ""} placeholder="0771 234 567" /></div>
+              <div className="field"><span className="label">SMS alerts</span><div className="checks"><label><input type="checkbox" name="smsEnabled" value="1" defaultChecked={u.smsEnabled} />Send SMS for items needing action and decisions</label></div></div></div>
             <div className="form-actions"><Submit variant="secondary">Save</Submit></div>
           </ActionForm>
         </Panel>
         <Panel title="Security">
           <ActionForm action={userAdminAction}>{h("reset")}<p className="small">Issue a new temporary password. Existing sessions are signed out.</p><div className="form-actions"><Submit variant="secondary" confirm="Reset this user's password?">Reset password</Submit></div></ActionForm>
           <ActionForm action={userAdminAction}>{h("reset2fa")}<p className="small">Lost phone: reset the password and two-factor together.</p><div className="form-actions"><Submit variant="secondary" confirm="Reset password and two-factor?">Reset password and two-factor</Submit></div></ActionForm>
+          <ActionForm action={userAdminAction}>{h("testsms")}<p className="small">Check the SMS gateway reaches this person.</p><div className="form-actions"><Submit variant="secondary">Send test SMS</Submit></div></ActionForm>
           <ActionForm action={userAdminAction}>{h(u.active ? "deactivate" : "activate")}<div className="form-actions"><Submit variant={u.active ? "destructive" : "secondary"} confirm={u.active ? "Deactivate this account? They are signed out immediately." : undefined}>{u.active ? "Deactivate account" : "Reactivate account"}</Submit></div></ActionForm>
         </Panel>
       </div>

@@ -19,15 +19,16 @@ export default async function Users() {
             <div className="field"><label htmlFor="name">Full name</label><input id="name" name="name" /></div>
             <div className="field"><label htmlFor="email">Email</label><input id="email" type="email" name="email" /></div>
             <div className="field"><label htmlFor="title">Title</label><input id="title" name="title" placeholder="e.g. Finance Officer, Earldeign Director" /></div>
+            <div className="field"><label htmlFor="phone">Mobile number (for SMS alerts)</label><input id="phone" name="phone" inputMode="tel" placeholder="0771 234 567" /></div>
           </div>
           <div className="checks"><label><input type="checkbox" name="superAdmin" value="1" />Super Admin (platform administration only)</label></div>
           <div className="form-actions"><Submit>Create account</Submit><span className="small muted">A temporary password is shown once. Assign JV roles on the next screen.</span></div>
         </ActionForm>
       </Panel>
       <Panel flush>
-        <table className="data"><thead><tr><th>Name</th><th>Email</th><th>Access</th><th>Two-factor</th><th>Status</th></tr></thead>
+        <table className="data"><thead><tr><th>Name</th><th>Email</th><th>Mobile</th><th>Access</th><th>Two-factor</th><th>Status</th></tr></thead>
           <tbody>{rows.map(({ user, roles }) => (
-            <tr key={user.id}><td><Link href={`/admin/users/${user.id}`}>{user.name}</Link></td><td>{user.email}</td>
+            <tr key={user.id}><td><Link href={`/admin/users/${user.id}`}>{user.name}</Link></td><td>{user.email}</td><td>{user.phone ?? <span className="muted">{"\u2013"}</span>}</td>
               <td className="wrap small">{user.isSuperAdmin ? "Super Admin" : roles.length ? roles.map((r) => `${ROLE_LABEL[r.m.role]} (${r.jv})`).join("; ") : <span className="muted">No roles yet</span>}</td>
               <td>{user.totpEnabled ? "On" : "Off"}</td><td><Status status={user.active ? "approved" : "cancelled"} label={user.active ? "Active" : "Deactivated"} /></td></tr>
           ))}</tbody></table>

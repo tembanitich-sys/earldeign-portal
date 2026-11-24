@@ -292,3 +292,35 @@ describe("Projects", () => {
     await expect(addProject(db, w.cto, "ZimBNB")).rejects.toThrow(/inactive/);
   });
 });
+
+describe("Notifications", () => {
+  it("normalises Zimbabwean numbers and keeps SMS to one message", async () => {
+    const { normalisePhone, smsText } = await import("@/lib/sms");
+    expect(normalisePhone("0771 234 567")).toBe("+263771234567");
+    expect(normalisePhone("263771234567")).toBe("+263771234567");
+    expect(normalisePhone("+263 77 123 4567")).toBe("+263771234567");
+    expect(normalisePhone("12345")).toBeNull();
+    const t = smsText("BT-REQ-2026-0001 awaits your review: a very long payee name ".repeat(4), "https://earldeign-portal-preview.vercel.app/j/bullion/requisitions/0f6c2f0e-1111-4c8e-9b0b-2a1e0c9d8e7f");
+    expect(t.length).toBeLessThanOrEqual(160);
+  });
+
+  it("CTO submission notifies the Finance Officer; the decision goes back to the CTO, by email and SMS", async () => {
+    const { notifications, users } = await import("@/db/schema");
+    const { eq } = await import("drizzle-orm");
+    const w = await world();
+    await db.update(users).set({ phone: "+263771234567" }).where(eq(users.id, w.fo.userId));
+    const r = await R.createRequisition(db, w.cto, { currency: "USD", payee: "X", paymentMethod: "cash", lines: [line("Item", "10")] });
+    await R.submitRequisition(db, w.cto, r.id);
+    const toFo = await db.select().from(notifications).where(eq(notifications.userId, w.fo.userId));
+    expect(toFo.some((n) => n.title.includes("awaits your review") && n.smsWanted)).toBe(true);
+    await R.financeReview(db, w.fo, r.id, "approve");
+    const toCto = await db.select().from(notifications).where(eq(notifications.userId, w.cto.userId));
+    expect(toCto.some((n) => n.title.includes("Approved"))).toBe(true);
+    process.env.SMS_DRIVER = "log";
+    const { flushNotifications } = await import("@/lib/notify");
+    await flushNotifications(db);
+    const after = await db.select().from(notifications).where(eq(notifications.userId, w.fo.userId));
+    expect(after.every((n) => n.emailed && n.smsSent)).toBe(true);
+    delete process.env.SMS_DRIVER;
+  });
+});
