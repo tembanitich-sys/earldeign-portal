@@ -65,9 +65,9 @@ export async function twoFactorRequired(user: SessionUser): Promise<boolean> {
 }
 
 /** Gatekeeper for every signed-in page: password change, 2FA enrolment and 2FA check come first. */
-export async function requireUser(opts: { allowPending?: boolean } = {}): Promise<SessionUser> {
+export async function requireUser(opts: { allowPending?: boolean; jv?: string } = {}): Promise<SessionUser> {
   const s = await getSession();
-  if (!s) redirect("/login");
+  if (!s) redirect(opts.jv ? `/login?jv=${encodeURIComponent(opts.jv)}` : "/login");
   if (opts.allowPending) return s.user;
   if (s.user.mustChangePassword) redirect("/account/password");
   if (s.user.totpEnabled && !s.session.twoFactorPassed) redirect("/login/verify");
@@ -83,7 +83,7 @@ export async function requireSuperAdmin(): Promise<SessionUser> {
 
 /** Context for a JV page. A user without a role in the JV gets a 404, so nothing about the JV leaks. */
 export async function requireJv(code: string): Promise<Ctx> {
-  const u = await requireUser();
+  const u = await requireUser({ jv: code });
   const ctx = await loadCtx(db, u.id, code);
   if (!ctx) notFound();
   return ctx!;

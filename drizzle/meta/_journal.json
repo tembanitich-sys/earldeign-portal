@@ -15,6 +15,13 @@
       "when": 1795443533940,
       "tag": "0001_ledger_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795492438691,
+      "tag": "0002_jv_logo",
+      "breakpoints": true
     }
   ]
 }

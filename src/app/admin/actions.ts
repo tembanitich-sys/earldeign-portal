@@ -94,3 +94,18 @@ export async function userAdminAction(_: FormState, fd: FormData): Promise<FormS
   revalidatePath(`/admin/users/${id}`);
   return { ok: "Saved." };
 }
+
+export async function logoAction(_: FormState, fd: FormData): Promise<FormState> {
+  const id = s(fd, "id");
+  try {
+    const a = await actor();
+    if (s(fd, "remove") === "1") await A.removeJvLogo(db, a, id);
+    else {
+      const f = fd.get("logo");
+      if (!(f instanceof File)) return { error: "Choose the logo file." };
+      await A.setJvLogo(db, a, id, f);
+    }
+  } catch (e) { return fail(e); }
+  revalidatePath(`/admin/jvs/${id}`);
+  return { ok: "Logo saved. It now appears in the JV's screens, sign-in page and documents." };
+}

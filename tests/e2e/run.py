@@ -63,12 +63,17 @@ with sync_playwright() as p:
     settle(sp)
     sp.fill("#vatRatePercent", "15.5"); sp.fill("#vatNo", "10012345"); sp.fill("#bpNo", "200123456"); sp.fill("#taxClearanceNo", "ITF263-2026-001"); sp.fill("#taxClearanceExpiry", "2026-12-31")
     sp.click("text=Save settings"); settle(sp); ok_notice(sp)
-    sp.screenshot(path=f"{SHOTS}/02-admin-jv-settings.png", full_page=True)
+    sp.set_input_files("#logo", "/home/claude/e2e/test-logo.png"); sp.click("button:has-text('Upload logo')"); settle(sp); ok_notice(sp)
+    assert sp.locator("img[alt*='logo']").count() == 1, "logo preview missing"
+    sp.goto(sp.url); sp.screenshot(path=f"{SHOTS}/02-admin-jv-settings.png", full_page=True)
+    _lc = pp.new_context(); lg = _lc.new_page(); lg.goto(BASE + "/login?jv=bullion"); assert lg.locator("img.auth-logo.jv").count() == 1, "JV sign-in logo missing"
+    lg.screenshot(path=f"{SHOTS}/02b-jv-login.png"); _lc.close()
 
     step("CTO first sign-in (no 2FA required for CTO)")
     cto, cp = login(pp, "tich@bulliongroup.co.zw", "ChangeMe!2026", "CtoPassword2026")
     assert "/j/bullion" in cp.url, cp.url
-    cp.screenshot(path=f"{SHOTS}/03-cto-dashboard-empty.png", full_page=True)
+    assert cp.locator(".nav-brand img").count() == 1, "JV logo missing in sidebar"
+    cp.screenshot(path=f"{SHOTS}/03-cto-dashboard-empty.png")
 
     step("CTO uploads historical import")
     cp.goto(BASE + "/j/bullion/import")

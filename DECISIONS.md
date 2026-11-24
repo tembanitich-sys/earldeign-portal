@@ -17,3 +17,4 @@
 | 13 | Actions that stay on the same page refresh the page instead of redirecting; no route-level loading boundary | Next.js 15 intermittently left the form stuck on "Working" after same-page redirects and with a loading boundary; found in browser testing. |
 | 14 | Logo files are clearly marked placeholders | Brand Manual section 9: developers use the master artwork only, never redraw it. |
 | 15 | PDFs carry the front-facing company's letterhead (Bullion Technologies), not the Earldeign logo | Invoices and receipts are Bullion's documents; Earldeign appears only in the footer line. |
+| 16 | Each JV shows its own logo (sidebar, sign-in page on its subdomain, PDFs); Earldeign branding on the Super Admin console and default sign-in. Layout, type and colours stay on the Earldeign design system for every JV | One product to maintain and keep accessible; JV users still see their own company. Logos are PNG/JPG only because SVG files can carry scripts. |

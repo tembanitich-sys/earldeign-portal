@@ -5,7 +5,7 @@ import { db } from "@/db";
 import { budgets, categories, jvBankAccounts, jvs, memberships, projects, users } from "@/db/schema";
 import { ROLE_LABEL } from "@/lib/access";
 import { CURRENCIES, minorToInput } from "@/lib/money";
-import { bankAction, budgetAction, listItemAction, updateJvAction } from "../../actions";
+import { bankAction, budgetAction, listItemAction, logoAction, updateJvAction } from "../../actions";
 import { ActionForm, AmountInput, Submit } from "@/components/forms";
 import { JvSettingsFields } from "@/components/jv-settings-form";
 import { Empty, PageHead, Panel } from "@/components/ui";
@@ -41,6 +41,22 @@ export default async function JvAdmin({ params }: { params: Promise<{ id: string
         {members.length ? <table className="data"><thead><tr><th>Name</th><th>Email</th><th>Role</th></tr></thead>
           <tbody>{members.map(({ m, u }) => <tr key={m.id}><td><Link href={`/admin/users/${u.id}`}>{u.name}</Link></td><td>{u.email}</td><td>{ROLE_LABEL[m.role]}</td></tr>)}</tbody></table>
           : <Empty title="Nobody has a role in this JV yet"><Link href="/admin/users">Add users and assign roles</Link>.</Empty>}
+      </Panel>
+      <Panel title="JV branding">
+        <p className="small muted">The JV&apos;s logo replaces the Earldeign logo in this JV&apos;s screens, on its sign-in page ({jv.code}.{root}) and on its invoices, receipts and requisitions. Layout, type and colours stay on the Earldeign design system for every JV.</p>
+        <div className="form-row" style={{ alignItems: "center" }}>
+          <div style={{ background: "var(--ei-white)", border: "1px solid var(--ei-border)", borderRadius: 4, padding: 16, textAlign: "center", minHeight: 96 }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {jv.logoKey ? <img src={`/api/jv-logo/${jv.code}?v=${encodeURIComponent(jv.logoKey.slice(-12))}`} alt={`${jv.companyName} logo`} style={{ maxHeight: 80, maxWidth: "100%" }} /> : <span className="muted small">No logo yet: the company name is shown instead.</span>}
+          </div>
+          <div>
+            <ActionForm action={logoAction}><input type="hidden" name="id" value={id} />
+              <div className="field"><label htmlFor="logo">Logo file (PNG with transparent background, or JPG; up to 1 MB)</label><input id="logo" type="file" name="logo" accept="image/png,image/jpeg" /></div>
+              <div className="form-actions"><Submit variant="secondary">Upload logo</Submit></div>
+            </ActionForm>
+            {jv.logoKey ? <ActionForm action={logoAction}><input type="hidden" name="id" value={id} /><input type="hidden" name="remove" value="1" /><div className="form-actions"><Submit variant="tertiary" small confirm="Remove the logo?">Remove logo</Submit></div></ActionForm> : null}
+          </div>
+        </div>
       </Panel>
       <ActionForm action={updateJvAction}><input type="hidden" name="id" value={id} /><JvSettingsFields jv={jv} /><div className="form-actions" style={{ marginBottom: 24 }}><Submit>Save settings</Submit></div></ActionForm>
       <div className="grid-2">{list("project", projs, "Projects")}{list("category", cats, "Expense categories")}</div>

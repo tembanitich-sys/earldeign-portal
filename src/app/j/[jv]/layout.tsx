@@ -18,9 +18,11 @@ export default async function JvLayout({ children, params }: { children: ReactNo
   return (
     <div className="shell">
       <nav className="nav" aria-label="Main">
-        <a className="nav-logo" href={base}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/brand/earldeign-compact-lockup-dark.svg" alt="Earldeign Investments" width={260} height={56} />
+        <a className="nav-brand" href={base}>
+          {ctx.jv.logoKey
+            // eslint-disable-next-line @next/next/no-img-element
+            ? <img src={`/api/jv-logo/${code}?v=${encodeURIComponent(ctx.jv.logoKey.slice(-12))}`} alt={ctx.jv.companyName} />
+            : <span className="nav-brand-name">{ctx.jv.companyName}</span>}
         </a>
         <div className="nav-jv">
           <div className="label-caps">Joint venture</div>
@@ -56,6 +58,7 @@ export default async function JvLayout({ children, params }: { children: ReactNo
           <div>{ctx.roles.map((r) => ROLE_LABEL[r]).join(", ")}</div>
           <div style={{ marginTop: 8 }}><a href="/account/password">Change password</a> · <a href="/account/security">Two-factor</a></div>
           <form action={logoutAction} style={{ marginTop: 8 }}><button type="submit">Sign out</button></form>
+          <div style={{ marginTop: 16, fontSize: 12, color: "rgba(250,248,243,0.55)" }}>Powered by Earldeign Investments</div>
         </div>
       </nav>
       <main className="main" id="main"><div className="main-inner">{children}</div></main>

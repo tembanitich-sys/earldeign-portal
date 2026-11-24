@@ -18,7 +18,7 @@
 7. **Domains.** In Vercel add `bullion.earldeign.co.zw` (and `portal.earldeign.co.zw` if wanted). At Vertico's DNS, add the CNAME
    records Vercel shows. **Each new JV** needs its own subdomain added in Vercel and at the DNS provider; until then it works at
    `portal.earldeign.co.zw/j/<code>`.
-8. **Never run** `scripts/demo-users.ts` against production.
+8. The Vercel build (`vercel-build`) runs migrations and the seed automatically. Demo users are created only when `PREVIEW_DEMO=on`: set it **only** on the Preview environment, never on Production.
 
 Every later release: push to the main branch; Vercel builds and deploys. Run `npm run db:migrate` when a release adds a migration.
 

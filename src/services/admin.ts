@@ -222,3 +222,31 @@ export async function listUsers(db: Executor) {
   const ms = await db.select({ m: memberships, jv: jvs.name, code: jvs.code }).from(memberships).innerJoin(jvs, eq(jvs.id, memberships.jvId));
   return us.map((u) => ({ user: u, roles: ms.filter((x) => x.m.userId === u.id) }));
 }
+
+// ---------------------------------------------------------------- JV logo
+
+export const LOGO_MIME: Record<string, string> = { "image/png": "png", "image/jpeg": "jpg" };
+const LOGO_MAX = 1024 * 1024;
+
+/** JV logo used in the JV's screens, its sign-in page and its PDFs. PNG or JPG only (SVG can carry scripts). */
+export async function setJvLogo(db: DB, a: AdminCtx, jvId: string, file: File) {
+  requireSuper(a);
+  assert(file && file.size > 0, "Choose the logo file.");
+  assert(file.size <= LOGO_MAX, "The logo can be at most 1 MB.");
+  const ext = LOGO_MIME[file.type];
+  assert(ext, "Upload the logo as PNG (preferably with a transparent background) or JPG.");
+  const { storage, newKey } = await import("@/lib/storage");
+  const key = await storage().put(newKey(jvId, ext).replace(/\/([^/]+)$/, "/logo-$1"), Buffer.from(await file.arrayBuffer()), file.type);
+  await db.transaction(async (tx) => {
+    await tx.update(jvs).set({ logoKey: key, logoMime: file.type }).where(eq(jvs.id, jvId));
+    await audit(tx, { actorId: a.userId, jvId, action: "jv.logo_set", entityType: "jv", entityId: jvId, after: { filename: file.name, size: file.size }, ip: a.ip });
+  });
+}
+
+export async function removeJvLogo(db: DB, a: AdminCtx, jvId: string) {
+  requireSuper(a);
+  await db.transaction(async (tx) => {
+    await tx.update(jvs).set({ logoKey: null, logoMime: null }).where(eq(jvs.id, jvId));
+    await audit(tx, { actorId: a.userId, jvId, action: "jv.logo_removed", entityType: "jv", entityId: jvId, ip: a.ip });
+  });
+}

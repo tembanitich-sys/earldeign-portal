@@ -76,6 +76,8 @@ export const jvs = pgTable("jvs", {
   currencies: text("currencies").array().notNull().default(sql`ARRAY['USD']::text[]`),
   acquittalDays: integer("acquittal_days").notNull().default(14),
   goLiveDate: date("go_live_date"),
+  logoKey: text("logo_key"),
+  logoMime: text("logo_mime"),
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [uniqueIndex("jvs_code_uq").on(t.code), uniqueIndex("jvs_short_code_uq").on(t.shortCode)]);

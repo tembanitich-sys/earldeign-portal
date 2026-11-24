@@ -89,12 +89,19 @@ export async function renderDoc(opts: { jv: JvRow; title: string; number: string
   fonts();
   const qr = await QRCode.toDataURL(opts.verifyUrl, { margin: 0, width: 160 });
   const j = opts.jv;
+  let logo: { data: Buffer; format: "png" | "jpg" } | null = null;
+  if (j.logoKey && j.logoMime) {
+    const { storage } = await import("./storage");
+    const data = await storage().get(j.logoKey);
+    if (data) logo = { data, format: j.logoMime === "image/png" ? "png" : "jpg" };
+  }
   const tax = [j.vatNo && `VAT ${j.vatNo}`, j.bpNo && `BP ${j.bpNo}`, j.tin && `TIN ${j.tin}`].filter(Boolean).join(" · ");
   const doc = (
     <Document title={`${opts.title} ${opts.number}`} author={j.companyName} creator="Earldeign Portal">
       <Page size="A4" orientation={opts.landscape ? "landscape" : "portrait"} style={st.page}>
         <View style={st.head}>
           <View style={{ maxWidth: "70%" }}>
+            {logo ? <Image src={logo} style={{ maxHeight: 44, maxWidth: 200, objectFit: "contain", marginBottom: 6 }} /> : null}
             <Text style={st.company}>{j.companyName}</Text>
             {j.companyAddress ? <Text style={st.small}>{j.companyAddress}</Text> : null}
             <Text style={st.small}>{[j.companyPhone, j.companyEmail].filter(Boolean).join(" · ")}</Text>
