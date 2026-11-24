@@ -324,3 +324,35 @@ describe("Notifications", () => {
     delete process.env.SMS_DRIVER;
   });
 });
+
+describe("Econet SMS gateway", () => {
+  it("reads success and failure replies in JSON and XML", async () => {
+    const { parseEconetResponse } = await import("@/lib/sms");
+    expect(parseEconetResponse(200, JSON.stringify({ status: { "error-code": "000", "error-status": "Success" }, "sms-response-details": [{ "success-count": "1", "failed-sms-details": [], "sent-sms-details": [{ "message-id": "1" }] }] })).ok).toBe(true);
+    expect(parseEconetResponse(200, JSON.stringify({ status: { "error-code": "002", "error-description": "invalid senderid" } })).ok).toBe(false);
+    expect(parseEconetResponse(200, '<sms-response><status><error-code>000</error-code></status><sms-response-details><failed-sms-details><count>0</count></failed-sms-details></sms-response-details></sms-response>').ok).toBe(true);
+    expect(parseEconetResponse(200, '<sms-response><status><error-code>000</error-code></status><sms-response-details><failed-sms-details><count>1</count></failed-sms-details></sms-response-details></sms-response>').ok).toBe(false);
+    expect(parseEconetResponse(500, "").ok).toBe(false);
+  });
+
+  it("sends the documented request: GET with apikey, mobiles 263..., sms, senderid", async () => {
+    const http = await import("node:http");
+    let seen = "";
+    const srv = http.createServer((req, res) => { seen = req.url ?? ""; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ status: { "error-code": "000" }, "sms-response-details": [{ "failed-sms-details": [] }] })); });
+    await new Promise<void>((r) => srv.listen(0, r));
+    const port = (srv.address() as { port: number }).port;
+    Object.assign(process.env, { SMS_DRIVER: "econet", SMS_API_KEY: "testkey123", SMS_SENDER_ID: "EarldeignJV", SMS_API_BASE: `http://127.0.0.1:${port}` });
+    const { sendSms } = await import("@/lib/sms");
+    const r = await sendSms("0771 234 567", "BT-REQ-2026-0001 awaits your review", "abc-123");
+    srv.close();
+    for (const k of ["SMS_DRIVER", "SMS_API_KEY", "SMS_SENDER_ID", "SMS_API_BASE"]) delete process.env[k];
+    expect(r.ok).toBe(true);
+    const u = new URL(seen, "http://x");
+    expect(u.pathname).toBe("/client/api/sendmessage");
+    expect(u.searchParams.get("apikey")).toBe("testkey123");
+    expect(u.searchParams.get("mobiles")).toBe("263771234567");
+    expect(u.searchParams.get("senderid")).toBe("EarldeignJV");
+    expect(u.searchParams.get("sms")).toBe("BT-REQ-2026-0001 awaits your review");
+    expect(u.searchParams.get("client-sms-ids")).toBe("abc123");
+  });
+});

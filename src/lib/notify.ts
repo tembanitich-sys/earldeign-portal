@@ -71,7 +71,7 @@ async function flushBatch(db: Executor): Promise<number> {
     }
     if (n.smsWanted && !n.smsSent) {
       // Only attempt SMS when the user has a number and has not turned SMS off; otherwise mark it done.
-      if (n.phone && n.smsEnabled && (process.env.SMS_DRIVER ?? "off") !== "off") await sendSms(n.phone, smsText(n.title, url));
+      if (n.phone && n.smsEnabled && (process.env.SMS_DRIVER ?? "off") !== "off") await sendSms(n.phone, smsText(n.title, url), n.id);
       await db.update(notifications).set({ smsSent: true }).where(eq(notifications.id, n.id));
     }
   }

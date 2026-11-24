@@ -45,3 +45,21 @@ Run it under systemd or Docker restart policy, back up the database nightly (`pg
 
 1. Neon: create a branch from a point in time 10 minutes ago; point a preview deployment's `DATABASE_URL` at it; confirm the loan book matches.
 2. VPS: restore last night's `pg_dump` into a scratch database and open the loan book against it.
+
+## Notifications: email and SMS
+
+Every request that needs someone's action, and every decision, appears in the portal, is emailed, and is sent by SMS
+to users with a mobile number (Super Admin > Users > the person > Mobile number). Delivery runs after each action.
+
+**Email.** Set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` (e.g. `Earldeign Portal <noreply@earldeign.com>`).
+Add SPF/DKIM for the sending domain so messages are not marked as spam.
+
+**SMS (Econet Zimbabwe SMS HTTP API).**
+```
+SMS_DRIVER=econet
+SMS_API_KEY=<API key from the Econet messaging portal>
+SMS_SENDER_ID=<approved sender ID, max 11 letters/digits, e.g. EarldeignJV>
+# SMS_API_BASE=https://mobilemessaging.econet.co.zw   (default)
+```
+Redeploy after changing variables, then use **Send test SMS** on a user's page. The reply from Econet is shown
+(code 000 means accepted). SMS text is plain ASCII and kept to one 160-character message including the link.
