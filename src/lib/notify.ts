@@ -64,7 +64,7 @@ async function flushBatch(db: Executor): Promise<number> {
       const text = [
         `Hello ${n.name.split(" ")[0]},`, "", n.title, n.body ? `\n${n.body}` : "", "",
         url ? `Open it in the portal: ${url}` : "Open the portal to view it.", "",
-        `${n.jvName ?? "Earldeign Portfolio Portal"}`, "Earldeign Investments (Pvt) Ltd. This is an automated message; replies are not monitored.",
+        `${n.jvName ?? "Earldeign Portfolio Portal"}`, "Earldeign Investments (Pvt) Ltd. This message was sent automatically by the portal; replying reaches the JV finance mailbox.",
       ].join("\n");
       await sendMail(n.email, `${n.title}${n.jvName ? ` | ${n.jvName}` : ""}`, text);
       await db.update(notifications).set({ emailed: true }).where(eq(notifications.id, n.id));
