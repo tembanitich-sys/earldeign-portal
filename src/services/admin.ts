@@ -192,13 +192,48 @@ export async function setUserActive(db: DB, a: AdminCtx, userId: string, active:
   });
 }
 
-export async function updateUser(db: DB, a: AdminCtx, userId: string, input: { name: string; title?: string; phone?: string; smsEnabled?: boolean }) {
+export async function updateUser(db: DB, a: AdminCtx, userId: string, input: { name: string; title?: string; phone?: string; smsEnabled?: boolean; email?: string }) {
   requireSuper(a);
   assert(input.name?.trim(), "Enter the person's name.");
   const phone = phoneOf(input.phone);
+  const result = await db.transaction(async (tx) => {
+    const [before] = await tx.select().from(users).where(eq(users.id, userId));
+    assert(before, "User not found.");
+    let email = before.email;
+    if (input.email !== undefined && input.email.trim().toLowerCase() !== before.email.toLowerCase()) {
+      email = input.email.trim().toLowerCase();
+      assert(/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email), "Enter a valid email address.");
+      const [dupe] = await tx.select({ id: users.id }).from(users).where(sql`lower(${users.email}) = ${email} and ${users.id} <> ${userId}`);
+      assert(!dupe, "Another account already uses that email address.");
+    }
+    const after = { name: input.name.trim(), title: input.title?.trim() || null, phone, smsEnabled: input.smsEnabled ?? true, email };
+    await tx.update(users).set(after).where(eq(users.id, userId));
+    await audit(tx, {
+      actorId: a.userId, action: email !== before.email ? "user.update_email" : "user.update", entityType: "user", entityId: userId,
+      before: { name: before.name, title: before.title, phone: before.phone, smsEnabled: before.smsEnabled, email: before.email }, after, ip: a.ip,
+    });
+    return { oldEmail: before.email, newEmail: email, name: after.name };
+  });
+  if (result.oldEmail !== result.newEmail) {
+    // Tell the old address, so a change the person did not expect is noticed. Best effort: never blocks the change.
+    const { sendMail } = await import("@/lib/mailer");
+    await sendMail(result.oldEmail, "Your Earldeign portal sign-in email was changed",
+      `Hello ${result.name.split(" ")[0]},\n\nThe Super Admin changed the email address you use to sign in to the Earldeign portal from ${result.oldEmail} to ${result.newEmail}. Notifications now go to the new address.\n\nIf you did not expect this, contact the Super Admin straight away.\n\nEarldeign Investments (Pvt) Ltd`).catch(() => false);
+  }
+  return result;
+}
+
+/** A user editing their own profile. Email is deliberately excluded: it is the sign-in and the notification route. */
+export async function updateOwnProfile(db: DB, userId: string, input: { name: string; title?: string; phone?: string; smsEnabled?: boolean }, ip?: string | null) {
+  assert(input.name?.trim(), "Enter your name.");
+  const phone = phoneOf(input.phone);
   await db.transaction(async (tx) => {
-    await tx.update(users).set({ name: input.name.trim(), title: input.title?.trim() || null, phone, smsEnabled: input.smsEnabled ?? true }).where(eq(users.id, userId));
-    await audit(tx, { actorId: a.userId, action: "user.update", entityType: "user", entityId: userId, after: input, ip: a.ip });
+    const [before] = await tx.select().from(users).where(eq(users.id, userId));
+    assert(before, "User not found.");
+    const after = { name: input.name.trim(), title: input.title?.trim() || null, phone, smsEnabled: input.smsEnabled ?? true };
+    await tx.update(users).set(after).where(eq(users.id, userId));
+    await audit(tx, { actorId: userId, action: "user.update_own_profile", entityType: "user", entityId: userId,
+      before: { name: before.name, title: before.title, phone: before.phone, smsEnabled: before.smsEnabled }, after, ip });
   });
 }
 

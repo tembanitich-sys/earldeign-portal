@@ -56,7 +56,7 @@ export default async function JvLayout({ children, params }: { children: ReactNo
         <div className="nav-foot">
           <div style={{ color: "var(--ei-paper)", fontWeight: 600 }}>{ctx.userName}</div>
           <div>{ctx.roles.map((r) => ROLE_LABEL[r]).join(", ")}</div>
-          <div style={{ marginTop: 8 }}><a href="/account/password">Change password</a> · <a href="/account/security">Two-factor</a></div>
+          <div style={{ marginTop: 8 }}><a href={`/account/profile?jv=${code}`}>My profile</a> · <a href="/account/password">Password</a> · <a href="/account/security">Two-factor</a></div>
           <form action={logoutAction} style={{ marginTop: 8 }}><button type="submit">Sign out</button></form>
           <div style={{ marginTop: 16, fontSize: 12, color: "rgba(250,248,243,0.55)" }}>Powered by Earldeign Investments</div>
         </div>

@@ -84,7 +84,11 @@ export async function userAdminAction(_: FormState, fd: FormData): Promise<FormS
     const op = s(fd, "op");
     if (op === "grant") await A.grantRole(db, a, id, s(fd, "jvId"), s(fd, "role") as Role);
     else if (op === "revoke") await A.revokeRole(db, a, s(fd, "membershipId"));
-    else if (op === "update") await A.updateUser(db, a, id, { name: s(fd, "name"), title: s(fd, "title"), phone: s(fd, "phone"), smsEnabled: s(fd, "smsEnabled") === "1" });
+    else if (op === "update") {
+      const r = await A.updateUser(db, a, id, { email: s(fd, "email"), name: s(fd, "name"), title: s(fd, "title"), phone: s(fd, "phone"), smsEnabled: s(fd, "smsEnabled") === "1" });
+      revalidatePath(`/admin/users/${id}`);
+      return { ok: r.oldEmail !== r.newEmail ? `Saved. Sign-in email changed to ${r.newEmail}; a notice was sent to ${r.oldEmail}.` : "Saved." };
+    }
     else if (op === "testemail") {
       const [u] = await db.select().from(users).where(eq(users.id, id));
       const { testMail } = await import("@/lib/mailer");

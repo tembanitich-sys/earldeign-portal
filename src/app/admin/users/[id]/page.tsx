@@ -22,20 +22,27 @@ export default async function UserAdmin({ params }: { params: Promise<{ id: stri
       <PageHead title={u.name} crumbs={<Link href="/admin/users">Users and roles</Link>} context={`${u.email}${u.isSuperAdmin ? " · Super Admin" : ""}${u.active ? "" : " · Deactivated"}`} />
       <div className="grid-2">
         <Panel title="Account">
-          <Facts items={[["Email", u.email], ["Title", u.title], ["Mobile", u.phone], ["SMS alerts", u.phone ? (u.smsEnabled ? "On" : "Off") : "No number"], ["Two-factor", u.totpEnabled ? "On" : "Off"], ["Must change password", u.mustChangePassword ? "Yes" : "No"], ["Locked until", u.lockedUntil ? fmtDateTime(u.lockedUntil) : null], ["Created", fmtDateTime(u.createdAt)]]} />
+          <Facts items={[["Email", u.email], ["Title", u.title], ["Mobile", u.phone], ...((process.env.SMS_DRIVER ?? "off") !== "off" ? [["SMS alerts", u.phone ? (u.smsEnabled ? "On" : "Off") : "No number"] as [string, string]] : []), ["Two-factor", u.totpEnabled ? "On" : "Off"], ["Must change password", u.mustChangePassword ? "Yes" : "No"], ["Locked until", u.lockedUntil ? fmtDateTime(u.lockedUntil) : null], ["Created", fmtDateTime(u.createdAt)]]} />
           <ActionForm action={userAdminAction}>{h("update")}
-            <div className="form-row" style={{ marginTop: 16 }}><div className="field"><label htmlFor="name">Name</label><input id="name" name="name" defaultValue={u.name} /></div><div className="field"><label htmlFor="title">Title</label><input id="title" name="title" defaultValue={u.title ?? ""} /></div></div>
+            <div className="field" style={{ marginTop: 16 }}><label htmlFor="email">Email (also the sign-in)</label><input id="email" type="email" name="email" defaultValue={u.email} /><span className="hint">Changing it sends a notice to the old address and is recorded in the audit log.</span></div>
+            <div className="form-row"><div className="field"><label htmlFor="name">Name</label><input id="name" name="name" defaultValue={u.name} /></div><div className="field"><label htmlFor="title">Title</label><input id="title" name="title" defaultValue={u.title ?? ""} /></div></div>
             <div className="form-row"><div className="field"><label htmlFor="phone">Mobile number</label><input id="phone" name="phone" inputMode="tel" defaultValue={u.phone ?? ""} placeholder="0771 234 567" /></div>
-              <div className="field"><span className="label">SMS alerts</span><div className="checks"><label><input type="checkbox" name="smsEnabled" value="1" defaultChecked={u.smsEnabled} />Send SMS for items needing action and decisions</label></div></div></div>
+              {(process.env.SMS_DRIVER ?? "off") !== "off"
+                ? <div className="field"><span className="label">SMS alerts</span><div className="checks"><label><input type="checkbox" name="smsEnabled" value="1" defaultChecked={u.smsEnabled} />Send SMS for items needing action and decisions</label></div></div>
+                : <input type="hidden" name="smsEnabled" value={u.smsEnabled ? "1" : "0"} />}</div>
             <div className="form-actions"><Submit variant="secondary">Save</Submit></div>
           </ActionForm>
         </Panel>
-        <Panel title="Security">
-          <ActionForm action={userAdminAction}>{h("reset")}<p className="small">Issue a new temporary password. Existing sessions are signed out.</p><div className="form-actions"><Submit variant="secondary" confirm="Reset this user's password?">Reset password</Submit></div></ActionForm>
-          <ActionForm action={userAdminAction}>{h("reset2fa")}<p className="small">Lost phone: reset the password and two-factor together.</p><div className="form-actions"><Submit variant="secondary" confirm="Reset password and two-factor?">Reset password and two-factor</Submit></div></ActionForm>
-          <ActionForm action={userAdminAction}>{h("testemail")}<p className="small">Check that notification emails reach {u.email}.</p><div className="form-actions"><Submit variant="secondary">Send test email</Submit></div></ActionForm>
-          <ActionForm action={userAdminAction}>{h("testsms")}<p className="small">Check the SMS gateway reaches this person.</p><div className="form-actions"><Submit variant="secondary">Send test SMS</Submit></div></ActionForm>
-          <ActionForm action={userAdminAction}>{h(u.active ? "deactivate" : "activate")}<div className="form-actions"><Submit variant={u.active ? "destructive" : "secondary"} confirm={u.active ? "Deactivate this account? They are signed out immediately." : undefined}>{u.active ? "Deactivate account" : "Reactivate account"}</Submit></div></ActionForm>
+        <Panel title="Security and checks">
+          <div className="action-list">
+            <ActionForm action={userAdminAction}>{h("reset")}<div className="action-row"><div><strong>Reset password</strong><p className="small muted">Issues a new temporary password and signs the person out everywhere.</p></div><Submit variant="secondary" small confirm="Reset this user's password?">Reset password</Submit></div></ActionForm>
+            <ActionForm action={userAdminAction}>{h("reset2fa")}<div className="action-row"><div><strong>Reset password and two-factor</strong><p className="small muted">For a lost phone. They set up two-factor again at sign-in.</p></div><Submit variant="secondary" small confirm="Reset password and two-factor?">Reset both</Submit></div></ActionForm>
+            <ActionForm action={userAdminAction}>{h("testemail")}<div className="action-row"><div><strong>Test email</strong><p className="small muted">Sends a test message to {u.email}.</p></div><Submit variant="secondary" small>Send test email</Submit></div></ActionForm>
+            {(process.env.SMS_DRIVER ?? "off") !== "off" ? (
+              <ActionForm action={userAdminAction}>{h("testsms")}<div className="action-row"><div><strong>Test SMS</strong><p className="small muted">Sends a test SMS to {u.phone ?? "the mobile number (none yet)"}.</p></div><Submit variant="secondary" small>Send test SMS</Submit></div></ActionForm>
+            ) : null}
+            <ActionForm action={userAdminAction}>{h(u.active ? "deactivate" : "activate")}<div className="action-row"><div><strong>{u.active ? "Deactivate account" : "Reactivate account"}</strong><p className="small muted">{u.active ? "Signs them out immediately and blocks sign-in. Their records stay." : "Allows sign-in again."}</p></div><Submit variant={u.active ? "destructive" : "secondary"} small confirm={u.active ? "Deactivate this account? They are signed out immediately." : undefined}>{u.active ? "Deactivate" : "Reactivate"}</Submit></div></ActionForm>
+          </div>
         </Panel>
       </div>
       {u.isSuperAdmin ? <Panel title="JV roles"><p>Super Admin accounts cannot hold JV roles. Create a separate account for this person&apos;s JV work.</p></Panel> : (

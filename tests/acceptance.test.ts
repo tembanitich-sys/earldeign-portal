@@ -356,3 +356,28 @@ describe("Econet SMS gateway", () => {
     expect(u.searchParams.get("client-sms-ids")).toBe("abc123");
   });
 });
+
+describe("User profiles", () => {
+  it("Super Admin can change a user's email (unique, audited); users edit their own profile but not their email", async () => {
+    const { updateUser, updateOwnProfile } = await import("@/services/admin");
+    const { users, auditLog } = await import("@/db/schema");
+    const { eq, and } = await import("drizzle-orm");
+    const w = await world();
+    const target = await makeUser("Changing Email");
+    const other = await makeUser("Taken");
+    await expect(updateUser(db, w.admin, target.id, { name: target.name, email: other.email })).rejects.toThrow(/already uses/);
+    await expect(updateUser(db, { userId: w.cto.userId, isSuperAdmin: false }, target.id, { name: "x", email: "x@y.zz" })).rejects.toThrow(/Super Admin/);
+    const newEmail = `new-${Date.now()}@earldeign.com`;
+    const r = await updateUser(db, w.admin, target.id, { name: target.name, email: newEmail.toUpperCase() });
+    expect(r.newEmail).toBe(newEmail);
+    const [u] = await db.select().from(users).where(eq(users.id, target.id));
+    expect(u.email).toBe(newEmail);
+    const logs = await db.select().from(auditLog).where(and(eq(auditLog.entityId, target.id), eq(auditLog.action, "user.update_email")));
+    expect(logs.length).toBe(1);
+    await updateOwnProfile(db, target.id, { name: "Renamed Person", phone: "0771 234 567", email: "hijack@evil.test" } as never);
+    const [u2] = await db.select().from(users).where(eq(users.id, target.id));
+    expect(u2.name).toBe("Renamed Person");
+    expect(u2.phone).toBe("+263771234567");
+    expect(u2.email).toBe(newEmail);
+  });
+});

@@ -106,3 +106,15 @@ export async function logoutAction() {
   await destroySession();
   redirect("/login");
 }
+
+export async function updateProfileAction(_: FormState, fd: FormData): Promise<FormState> {
+  const s0 = await getSession();
+  if (!s0) redirect("/login");
+  try {
+    const { updateOwnProfile } = await import("@/services/admin");
+    await updateOwnProfile(db, s0.user.id, { name: s(fd, "name"), title: s(fd, "title"), phone: s(fd, "phone"), smsEnabled: s(fd, "smsEnabled") === "1" }, await clientIp());
+  } catch (e) {
+    return fail(e);
+  }
+  return { ok: "Your profile is saved." };
+}

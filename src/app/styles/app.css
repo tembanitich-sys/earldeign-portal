@@ -190,3 +190,7 @@ table.data th.num { text-align: right; }
 .nav-brand img { display: block; max-width: 100%; max-height: 64px; margin: 0 auto; }
 .nav-brand .nav-brand-name { color: var(--ei-ink); font-weight: 700; font-size: 16px; }
 .nav-powered { padding: var(--ei-space-3) var(--ei-space-6) 0; font-size: 12px; color: rgba(250, 248, 243, 0.55); }
+.action-list > form { padding: var(--ei-space-3) 0; border-bottom: 1px solid var(--ei-border); }
+.action-list > form:last-child { border-bottom: 0; }
+.action-row { display: flex; justify-content: space-between; align-items: center; gap: var(--ei-space-4); }
+.action-row p { margin: 2px 0 0; }

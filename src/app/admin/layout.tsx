@@ -19,7 +19,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         <div className="nav-foot">
           <div style={{ color: "var(--ei-paper)", fontWeight: 600 }}>{u.name}</div>
           <div>Super Admin (cannot transact)</div>
-          <div style={{ marginTop: 8 }}><a href="/account/password">Change password</a></div>
+          <div style={{ marginTop: 8 }}><a href="/account/profile">My profile</a> · <a href="/account/password">Change password</a></div>
           <form action={logoutAction} style={{ marginTop: 8 }}><button type="submit">Sign out</button></form>
         </div>
       </nav>
